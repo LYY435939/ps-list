@@ -2,7 +2,7 @@ export type Options = {
 	/**
 	Include other users' processes as well as your own.
 
-	On Windows this has no effect and will always be the user's own processes.
+	On Windows this has no effect and will always be all users' processes.
 
 	@default true
 	*/
