@@ -37,6 +37,27 @@ const makeStartTime = startTimeString => {
 	return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
 };
 
+const extractArguments = commandLine => {
+	if (!commandLine) {
+		return '';
+	}
+
+	if (commandLine.startsWith('"')) {
+		const quotedMatch = commandLine.match(/^"[^"]+"\s*(.*)$/);
+		return quotedMatch ? quotedMatch[1] : '';
+	}
+
+	if (commandLine.startsWith('/')) {
+		const executablePath = extractExecutablePath(commandLine);
+		if (executablePath) {
+			return commandLine.slice(executablePath.length).trim();
+		}
+	}
+
+	const firstSpaceIndex = commandLine.indexOf(' ');
+	return firstSpaceIndex === -1 ? '' : commandLine.slice(firstSpaceIndex + 1).trim();
+};
+
 // Extract executable path from command line using filesystem validation only
 const extractExecutablePath = commandLine => {
 	if (!commandLine) {
@@ -141,6 +162,7 @@ const parseProcessFields = ({processId, parentProcessId, userId, cpuUsage, memor
 		path: resolvedExecutablePath,
 		startTime: makeStartTime(startTimeString),
 		cmd: command || '',
+		args: extractArguments(command || ''),
 	};
 };
 
