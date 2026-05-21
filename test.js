@@ -26,6 +26,7 @@ test('main', async t => {
 	if (!isWindows) {
 		t.true(list.every(x =>
 			typeof x.cmd === 'string'
+			&& typeof x.args === 'string'
 			&& typeof x.cpu === 'number'
 			&& typeof x.memory === 'number'
 			&& (typeof x.uid === 'number' || x.uid === undefined)
@@ -68,6 +69,7 @@ test('custom binary', async t => {
 
 	if (!isWindows) {
 		t.is(record.cmd, `${nodeBinaryName} ${arguments_.join(' ')}`);
+		t.is(record.args, arguments_.join(' '));
 		t.is(record.uid, process.getuid());
 		// Path can be empty (relative command) or absolute (CI environments)
 		t.true(typeof record.path === 'string', 'Path should be a string');
@@ -83,6 +85,29 @@ test('custom binary', async t => {
 		if (record.startTime) {
 			t.false(Number.isNaN(record.startTime.getTime()), 'startTime should be valid Date');
 		}
+	}
+});
+
+test('absolute executable path extracts args', async t => {
+	if (isWindows) {
+		t.pass('Absolute path args test skipped on Windows');
+		return;
+	}
+
+	const arguments_ = ['./fixtures/sleep-forever.js', 'arg with spaces', 'arg3'];
+	const sleepForever = childProcess.spawn(process.execPath, arguments_);
+
+	try {
+		const list = await psList();
+		const record = list.find(process_ => process_.pid === sleepForever.pid);
+		t.truthy(record);
+		if (record) {
+			t.true(record.path.includes('node'), 'Resolved path should contain node');
+			t.is(record.args, arguments_.join(' '));
+		}
+	} finally {
+		sleepForever.kill(9);
+		await once(sleepForever, 'exit');
 	}
 });
 
@@ -112,7 +137,7 @@ test('path resolution', async t => {
 	}
 
 	// Find any node process - should have path resolved
-	const nodeProcess = list.find(x => x.name === 'node' || x.name === nodeBinaryName);
+	const nodeProcess = list.find(x => (x.name === 'node' || x.name === nodeBinaryName) && x.path);
 	if (nodeProcess) {
 		t.true(nodeProcess.path.includes('node'), 'Node process path should contain node');
 		// Verify path is not just the truncated comm
